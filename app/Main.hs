@@ -5,8 +5,8 @@ import Data.List (intercalate, minimumBy)
 import qualified Data.Set as Set
 import qualified Data.Sequence as Seq
 
--- Our cell types including enemies and loot
-data Cell = Wall | Empty | Enemy | Loot deriving (Eq, Show)
+-- Our cell types including enemies and two loot types
+data Cell = Wall | Empty | Enemy | Loot1 | Loot2 deriving (Eq, Show)
 
 -- Grid is a 2D list of cells
 type Grid = [[Cell]]
@@ -32,10 +32,11 @@ generateRandomGrid wallProbability seed width height =
 
 -- Show single cell
 showCell :: Cell -> Char
-showCell Wall = '█'
+showCell Wall = '#'
 showCell Empty = ' '
 showCell Enemy = '*'
-showCell Loot = '$'
+showCell Loot1 = '$'
+showCell Loot2 = '@'
 
 -- Show single row
 showRow :: [Cell] -> String
@@ -121,9 +122,13 @@ getEmptyPositions grid width height =
 shouldPlaceEnemy :: Probability -> Double -> Bool
 shouldPlaceEnemy probability r = r < probability
 
--- Convert random number to boolean for loot placement
-shouldPlaceLoot :: Probability -> Double -> Bool
-shouldPlaceLoot probability r = r < probability
+-- Convert random number to boolean for loot1 placement
+shouldPlaceLoot1 :: Probability -> Double -> Bool
+shouldPlaceLoot1 probability r = r < probability
+
+-- Convert random number to boolean for loot2 placement
+shouldPlaceLoot2 :: Probability -> Double -> Bool
+shouldPlaceLoot2 probability r = r < probability
 
 -- Replace cell at index in row 
 replaceAtRow :: [Cell] -> Int -> Cell -> [Cell]
@@ -145,10 +150,16 @@ placeEnemyAt grid pos probability randomVal
     | shouldPlaceEnemy probability randomVal = replaceAt grid pos Enemy
     | otherwise = grid
 
--- Place loot at position if it should be placed
-placeLootAt :: Grid -> Position -> Probability -> Double -> Grid
-placeLootAt grid pos probability randomVal
-    | shouldPlaceLoot probability randomVal = replaceAt grid pos Loot
+-- Place loot1 at position if it should be placed
+placeLoot1At :: Grid -> Position -> Probability -> Double -> Grid
+placeLoot1At grid pos probability randomVal
+    | shouldPlaceLoot1 probability randomVal = replaceAt grid pos Loot1
+    | otherwise = grid
+
+-- Place loot2 at position if it should be placed
+placeLoot2At :: Grid -> Position -> Probability -> Double -> Grid
+placeLoot2At grid pos probability randomVal
+    | shouldPlaceLoot2 probability randomVal = replaceAt grid pos Loot2
     | otherwise = grid
 
 -- Place enemies on specific positions 
@@ -160,14 +171,23 @@ placeEnemiesOnPositions probability grid (pos:positions) (r:randoms) =
   where
     updatedGrid = placeEnemyAt grid pos probability r
 
--- Place loot on specific positions
-placeLootOnPositions :: Probability -> Grid -> [Position] -> [Double] -> Grid
-placeLootOnPositions _ grid [] _ = grid
-placeLootOnPositions _ grid _ [] = grid
-placeLootOnPositions probability grid (pos:positions) (r:randoms) =
-    placeLootOnPositions probability updatedGrid positions randoms
+-- Place loot1 on specific positions
+placeLoot1OnPositions :: Probability -> Grid -> [Position] -> [Double] -> Grid
+placeLoot1OnPositions _ grid [] _ = grid
+placeLoot1OnPositions _ grid _ [] = grid
+placeLoot1OnPositions probability grid (pos:positions) (r:randoms) =
+    placeLoot1OnPositions probability updatedGrid positions randoms
   where
-    updatedGrid = placeLootAt grid pos probability r
+    updatedGrid = placeLoot1At grid pos probability r
+
+-- Place loot2 on specific positions
+placeLoot2OnPositions :: Probability -> Grid -> [Position] -> [Double] -> Grid
+placeLoot2OnPositions _ grid [] _ = grid
+placeLoot2OnPositions _ grid _ [] = grid
+placeLoot2OnPositions probability grid (pos:positions) (r:randoms) =
+    placeLoot2OnPositions probability updatedGrid positions randoms
+  where
+    updatedGrid = placeLoot2At grid pos probability r
 
 -- Place enemies on empty positions using random values
 placeEnemies :: Probability -> Grid -> [Double] -> Int -> Int -> Grid
@@ -176,10 +196,17 @@ placeEnemies probability grid randoms width height =
   where
     emptyPositions = getEmptyPositions grid width height
 
--- Place loot on empty positions using random values
-placeLoot :: Probability -> Grid -> [Double] -> Int -> Int -> Grid
-placeLoot probability grid randoms width height =
-    placeLootOnPositions probability grid emptyPositions randoms
+-- Place loot1 on empty positions using random values
+placeLoot1 :: Probability -> Grid -> [Double] -> Int -> Int -> Grid
+placeLoot1 probability grid randoms width height =
+    placeLoot1OnPositions probability grid emptyPositions randoms
+  where
+    emptyPositions = getEmptyPositions grid width height
+
+-- Place loot2 on empty positions using random values
+placeLoot2 :: Probability -> Grid -> [Double] -> Int -> Int -> Grid
+placeLoot2 probability grid randoms width height =
+    placeLoot2OnPositions probability grid emptyPositions randoms
   where
     emptyPositions = getEmptyPositions grid width height
 
@@ -242,23 +269,28 @@ connectRegions grid width height = connectAllRegions grid regions
         | y1 /= y2  = digTunnel (replaceAt g (x1, y1) Empty) (x1, y1 + signum (y2-y1)) (x2, y2)
         | otherwise = g
 
--- Generate grid with enemies and loot, after ensuring connectivity.
-generateGridWithEnemiesAndLoot :: Probability -> Probability -> Probability -> MapSeed -> Int -> Int -> Grid
-generateGridWithEnemiesAndLoot wallProbability enemyProb lootProb seed width height =
-    placeLoot lootProb gridWithEnemies lootRandoms width height
+-- Generate grid with enemies and both loot types, after ensuring connectivity.
+generateGridWithEnemiesAndLoot :: Probability -> Probability -> Probability -> Probability -> MapSeed -> Int -> Int -> Grid
+generateGridWithEnemiesAndLoot wallProbability enemyProb loot1Prob loot2Prob seed width height =
+    placeLoot2 loot2Prob gridWithLoot1 loot2Randoms width height
   where
     baseGrid = generateRandomGrid wallProbability seed width height
     evolvedGrid = evolveGenerations 5 baseGrid width height
     connectedGrid = connectRegions evolvedGrid width height
     enemyRandoms = randoms (mkStdGen (seed + 1000))
-    lootRandoms  = randoms (mkStdGen (seed + 2000))
+    loot1Randoms = randoms (mkStdGen (seed + 2000))
+    loot2Randoms = randoms (mkStdGen (seed + 3000))
     gridWithEnemies = placeEnemies enemyProb connectedGrid enemyRandoms width height
+    gridWithLoot1 = placeLoot1 loot1Prob gridWithEnemies loot1Randoms width height
 
 countEnemies :: Grid -> Int
 countEnemies grid = length (filter (== Enemy) (concat grid))
 
-countLoot :: Grid -> Int
-countLoot grid = length (filter (== Loot) (concat grid))
+countLoot1 :: Grid -> Int
+countLoot1 grid = length (filter (== Loot1) (concat grid))
+
+countLoot2 :: Grid -> Int
+countLoot2 grid = length (filter (== Loot2) (concat grid))
 
 readIntSafe :: String -> Maybe Int
 readIntSafe s = case reads s of
@@ -308,14 +340,19 @@ main = do
     enemyProbInput <- getLine
     enemyProb <- handleProbabilityInput enemyProbInput 0.04
 
-    putStrLn "Enter loot probability (default 0.03):"
-    lootProbInput <- getLine
-    lootProb <- handleProbabilityInput lootProbInput 0.03
+    putStrLn "Enter loot1 probability (default 0.03):"
+    loot1ProbInput <- getLine
+    loot1Prob <- handleProbabilityInput loot1ProbInput 0.03
+
+    putStrLn "Enter loot2 probability (default 0.02):"
+    loot2ProbInput <- getLine
+    loot2Prob <- handleProbabilityInput loot2ProbInput 0.02
 
     putStrLn ("\nGrid size: " ++ show gridWidth ++ "x" ++ show gridHeight)
-    putStrLn "\nFinal map with enemies (*) and loot ($):"
-    let finalGrid = generateGridWithEnemiesAndLoot 0.35 enemyProb lootProb seed gridWidth gridHeight
+    putStrLn "\nFinal map with enemies (*), loot1 ($), and loot2 (@):"
+    let finalGrid = generateGridWithEnemiesAndLoot 0.35 enemyProb loot1Prob loot2Prob seed gridWidth gridHeight
     putStrLn (showGrid finalGrid)
     putStrLn ("Total enemies placed: " ++ show (countEnemies finalGrid))
-    putStrLn ("Total loot placed: " ++ show (countLoot finalGrid))
+    putStrLn ("Total loot1 placed: " ++ show (countLoot1 finalGrid))
+    putStrLn ("Total loot2 placed: " ++ show (countLoot2 finalGrid))
     putStrLn ("\nSeed used: " ++ show seed ++ " (save this to reproduce the same cave!)")
