@@ -277,9 +277,9 @@ generateGridWithEnemiesAndLoot wallProbability enemyProb loot1Prob loot2Prob see
     baseGrid = generateRandomGrid wallProbability seed width height
     evolvedGrid = evolveGenerations 5 baseGrid width height
     connectedGrid = connectRegions evolvedGrid width height
-    enemyRandoms = randoms (mkStdGen (seed + 1000))
-    loot1Randoms = randoms (mkStdGen (seed + 2000))
-    loot2Randoms = randoms (mkStdGen (seed + 3000))
+    enemyRandoms = randoms (mkStdGen (seed + 108))
+    loot1Randoms = randoms (mkStdGen (seed + 108 * 108))
+    loot2Randoms = randoms (mkStdGen (seed + 108 * 108 * 108))
     gridWithEnemies = placeEnemies enemyProb connectedGrid enemyRandoms width height
     gridWithLoot1 = placeLoot1 loot1Prob gridWithEnemies loot1Randoms width height
 
