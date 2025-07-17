@@ -1,5 +1,5 @@
 # Description
-Our project provides an opportunity to generate a random map with enemies and loot on it for Dungeons and Dragons (or another game with an identical map)
+Our project provides an opportunity to generate a random map with enemies and loot on it for Dungeons and Dragons (or another game with an identical map).
 # Background
 Dungeons and dragons is a tabletop role-playing game for several players. One of
 the main parts of the game is a map of the area where the players are moving.
@@ -17,9 +17,9 @@ Here you can see the code of the last version of project: [Link](app\Main.hs)
 Here you can see demo video: [Video](https://drive.google.com/file/d/1Ao8013NjCw8gYMPixqgQZKUjtOQTH7aT/view?usp=drivesdk)
 
 Bellow you can see examples of generated maps:
-| | | |
+| | | | 
 |:-:|:-:|:-:|
-| ![](demo-images\image1.png) | ![](demo-images\image2.png)| ![](demo-images\image3.png)
+| ![](demo-images/image1.png) | ![](demo-images/image2.png)| ![](demo-images/image3.png)
 | Default parameters | Default parameters| Map 70 * 20, loot spawn chance = 0
 
 ## Annotation:
