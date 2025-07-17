@@ -13,6 +13,7 @@ type Grid = [[Cell]]
 type Position = (Int, Int)
 type MapSeed = Int
 type Probability = Double
+
 -- Helper function to split list into chunks
 chunksOf :: Int -> [a] -> [[a]]
 chunksOf _ [] = []
@@ -26,7 +27,7 @@ randomToCell wallProbability r
 
 -- Generate random grid with given wall probability
 generateRandomGrid :: Probability -> MapSeed -> Int -> Int -> Grid
-generateRandomGrid wallProbability  seed width height =
+generateRandomGrid wallProbability seed width height =
     take height (chunksOf width (map (randomToCell wallProbability) (randoms (mkStdGen seed))))
 
 -- Show single cell
@@ -155,75 +156,86 @@ placeEnemiesOnPositions :: Double -> Grid -> [Position] -> [Double] -> Grid
 placeEnemiesOnPositions _ grid [] _ = grid
 placeEnemiesOnPositions _ grid _ [] = grid
 placeEnemiesOnPositions probability grid (pos:positions) (r:randoms) =
-    let grid' = placeEnemyAt grid pos probability r
-    in placeEnemiesOnPositions probability grid' positions randoms
+    placeEnemiesOnPositions probability updatedGrid positions randoms
+  where
+    updatedGrid = placeEnemyAt grid pos probability r
 
 -- Place loot on specific positions
 placeLootOnPositions :: Probability -> Grid -> [Position] -> [Double] -> Grid
 placeLootOnPositions _ grid [] _ = grid
 placeLootOnPositions _ grid _ [] = grid
 placeLootOnPositions probability grid (pos:positions) (r:randoms) =
-    let grid' = placeLootAt grid pos probability r
-    in placeLootOnPositions probability grid' positions randoms
+    placeLootOnPositions probability updatedGrid positions randoms
+  where
+    updatedGrid = placeLootAt grid pos probability r
 
 -- Place enemies on empty positions using random values
 placeEnemies :: Probability -> Grid -> [Double] -> Int -> Int -> Grid
 placeEnemies probability grid randoms width height =
-    placeEnemiesOnPositions probability grid (getEmptyPositions grid width height) randoms
+    placeEnemiesOnPositions probability grid emptyPositions randoms
+  where
+    emptyPositions = getEmptyPositions grid width height
 
 -- Place loot on empty positions using random values
 placeLoot :: Probability -> Grid -> [Double] -> Int -> Int -> Grid
 placeLoot probability grid randoms width height =
-    placeLootOnPositions probability grid (getEmptyPositions grid width height) randoms
+    placeLootOnPositions probability grid emptyPositions randoms
+  where
+    emptyPositions = getEmptyPositions grid width height
 
 -- Find all regions of connected empty space using BFS.
 identifyRegions :: Grid -> Int -> Int -> [[Position]]
-identifyRegions grid width height = go Set.empty (getAllPositions width height) []
+identifyRegions grid width height = findRegions Set.empty (getAllPositions width height) []
   where
-    go _ [] acc = acc
-    go visited (p:ps) acc
-        | Set.member p visited = go visited ps acc
-        | not (isEmpty (getCellAt grid p width height)) = go visited ps acc
-        | otherwise =
-            let (region, vis') = bfsRegion p visited
-            in go vis' ps (region : acc)
+    findRegions _ [] acc = acc
+    findRegions visited (p:ps) acc
+        | Set.member p visited = findRegions visited ps acc
+        | not (isEmpty (getCellAt grid p width height)) = findRegions visited ps acc
+        | otherwise = findRegions updatedVisited ps (region : acc)
+      where
+        (region, updatedVisited) = bfsRegion p visited
+    
     -- BFS returns all the positions of the region and the updated visited set
     bfsRegion start vis = bfs (Seq.singleton start) (Set.insert start vis) []
       where
         bfs Seq.Empty vis' region = (region, vis')
-        bfs (q Seq.:<| qs) vis' region =
-            let nbrs = filter (\n -> isEmpty (getCellAt grid n width height) && not (Set.member n vis'))
-                               (тeighbors q)
-                vis'' = foldr Set.insert vis' nbrs
-                qs' = qs Seq.>< Seq.fromList nbrs
-            in bfs qs' vis'' (q : region)
+        bfs (q Seq.:<| qs) vis' region = bfs newQueue newVisited (q : region)
+          where
+            nbrs = filter (\n -> isEmpty (getCellAt grid n width height) && not (Set.member n vis')) (neighbors q)
+            newVisited = foldr Set.insert vis' nbrs
+            newQueue = qs Seq.>< Seq.fromList nbrs
+        
         -- Neighborhood (without diagonals)
-        тeighbors (x, y) =
+        neighbors (x, y) =
             filter (\(nx, ny) -> not (isOutOfBounds (nx, ny) width height))
                 [(x-1,y),(x+1,y),(x,y-1),(x,y+1)]
 
 -- Creates tunnels between disconnected areas to connect them.
 connectRegions :: Grid -> Int -> Int -> Grid
-connectRegions grid width height =
-    let regions = identifyRegions grid width height
-    in case regions of
-        [] -> grid
-        [r] -> grid
-        (r0:rs) -> foldl connect grid rs
-          where
-            -- For each subsequent area, we look for the closest points to the connected area and build a passage.
-            connect g region =
-                let target = closestPoints r0 region
-                in digTunnel g (fst target) (snd target)
-            closestPoints rA rB =
-                minimumBy (\((ax,ay),(bx,by)) ((cx,cy),(dx,dy)) ->
-                             compare ((ax-bx)^2 + (ay-by)^2) ((cx-dx)^2 + (cy-dy)^2))
-                          [((ax,ay),(bx,by)) | (ax,ay) <- rA, (bx,by) <- rB]
-            digTunnel g (x1,y1) (x2,y2)
-                | (x1, y1) == (x2, y2) = replaceAt g (x1, y1) Empty
-                | x1 /= x2  = digTunnel (replaceAt g (x1, y1) Empty) (x1 + signum (x2-x1), y1) (x2, y2)
-                | y1 /= y2  = digTunnel (replaceAt g (x1, y1) Empty) (x1, y1 + signum (y2-y1)) (x2, y2)
-                | otherwise = g
+connectRegions grid width height = connectAllRegions grid regions
+  where
+    regions = identifyRegions grid width height
+    
+    connectAllRegions g [] = g
+    connectAllRegions g [r] = g
+    connectAllRegions g (r0:rs) = foldl (connectToFirstRegion r0) g rs
+    
+    -- For each subsequent area, we look for the closest points to the connected area and build a passage.
+    connectToFirstRegion firstRegion currentGrid region = digTunnel currentGrid startPoint endPoint
+      where
+        (startPoint, endPoint) = closestPoints firstRegion region
+    
+    closestPoints rA rB =
+        minimumBy compareDistances [((ax,ay),(bx,by)) | (ax,ay) <- rA, (bx,by) <- rB]
+      where
+        compareDistances ((ax,ay),(bx,by)) ((cx,cy),(dx,dy)) =
+            compare ((ax-bx)^2 + (ay-by)^2) ((cx-dx)^2 + (cy-dy)^2)
+    
+    digTunnel g (x1,y1) (x2,y2)
+        | (x1, y1) == (x2, y2) = replaceAt g (x1, y1) Empty
+        | x1 /= x2  = digTunnel (replaceAt g (x1, y1) Empty) (x1 + signum (x2-x1), y1) (x2, y2)
+        | y1 /= y2  = digTunnel (replaceAt g (x1, y1) Empty) (x1, y1 + signum (y2-y1)) (x2, y2)
+        | otherwise = g
 
 -- Generate grid with enemies and loot, after ensuring connectivity.
 generateGridWithEnemiesAndLoot :: Probability -> Probability -> Probability -> MapSeed -> Int -> Int -> Grid
