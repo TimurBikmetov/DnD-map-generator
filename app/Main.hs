@@ -301,4 +301,4 @@ main = do
     putStrLn (showGrid finalGrid)
     putStrLn ("Total enemies placed: " ++ show (countEnemies finalGrid))
     putStrLn ("Total loot placed: " ++ show (countLoot finalGrid))
-    putStrLn ("\nSeed used: " ++ show seed ++ " (save this to reproduce the same cave!)")
+    putStrLn ("\nSeed used: " ++ show seed ++ " (save this to reproduce the same map!)")

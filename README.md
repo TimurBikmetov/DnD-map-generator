@@ -14,7 +14,14 @@ availability of useful loot.
 # The working version
 Here you can see the code of the last version of project: [Link](app\Main.hs)
 # Demo
-Here you can see demo video: [Video](https://drive.google.com/file/d/1AjPuOCoTzIh-SZtUfmxo-wzgiyuWKrUH/view?usp=drivesdk)
+Here you can see demo video: [Video](https://drive.google.com/file/d/1Ao8013NjCw8gYMPixqgQZKUjtOQTH7aT/view?usp=drivesdk)
+
+Bellow you can see examples of generated maps:
+| | | |
+|:-:|:-:|:-:|
+| ![](demo-images\image1.png) | ![](demo-images\image2.png)| ![](demo-images\image3.png)
+| Default parameters | Default parameters| Map 70 * 20, loot spawn chance = 0
+
 ## Annotation:
 * **Enemies** are marked as `*`;
 * **Loot** is marked as `$`;
