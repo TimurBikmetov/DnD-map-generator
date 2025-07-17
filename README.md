@@ -35,8 +35,8 @@ Generation method:
 
 ## Responsibilities distribution
 Stage 1:
-Fyodor created object types, GridWithoutObject generation 
-Timur created evolution rule, object adding to the map
+* Fyodor created object types, GridWithoutObject generation 
+* Timur created evolution rule, object adding to the map
 Stage 2:
-Timur improved connectivity (searching unconnected parts and connecting them artificially)
-Fyodor improved probability rates, view of objects, added choice for probabilities
+* Timur improved connectivity (searching unconnected parts and connecting them artificially)
+* Fyodor improved probability rates, view of objects, added choice for probabilities
