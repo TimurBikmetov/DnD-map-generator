@@ -32,7 +32,7 @@ generateRandomGrid wallProbability seed width height =
 
 -- Show single cell
 showCell :: Cell -> Char
-showCell Wall = '#'
+showCell Wall = '█'
 showCell Empty = ' '
 showCell Enemy = '*'
 showCell Loot = '$'
@@ -183,32 +183,37 @@ placeLoot probability grid randoms width height =
   where
     emptyPositions = getEmptyPositions grid width height
 
--- Find all regions of connected empty space using BFS.
+-- Find all regions of connected empty space
 identifyRegions :: Grid -> Int -> Int -> [[Position]]
-identifyRegions grid width height = findRegions Set.empty (getAllPositions width height) []
+identifyRegions grid width height = findAllRegions Set.empty (getAllPositions width height) []
   where
-    findRegions _ [] acc = acc
-    findRegions visited (p:ps) acc
-        | Set.member p visited = findRegions visited ps acc
-        | not (isEmpty (getCellAt grid p width height)) = findRegions visited ps acc
-        | otherwise = findRegions updatedVisited ps (region : acc)
+    findAllRegions _ [] foundRegions = foundRegions
+    findAllRegions visited (pos:remaining) foundRegions
+        | Set.member pos visited = findAllRegions visited remaining foundRegions
+        | not (isEmpty (getCellAt grid pos width height)) = findAllRegions visited remaining foundRegions
+        | otherwise = findAllRegions newVisited remaining (newRegion : foundRegions)
       where
-        (region, updatedVisited) = bfsRegion p visited
+        (newRegion, newVisited) = exploreRegion pos visited
     
-    -- BFS returns all the positions of the region and the updated visited set
-    bfsRegion start vis = bfs (Seq.singleton start) (Set.insert start vis) []
+    -- Explore a single region starting from a position
+    exploreRegion startPos initialVisited = explorePositions [startPos] initialVisited []
       where
-        bfs Seq.Empty vis' region = (region, vis')
-        bfs (q Seq.:<| qs) vis' region = bfs newQueue newVisited (q : region)
+        explorePositions [] currentVisited regionPositions = (regionPositions, currentVisited)
+        explorePositions (currentPos:remainingToExplore) currentVisited regionPositions
+            | Set.member currentPos currentVisited = explorePositions remainingToExplore currentVisited regionPositions
+            | not (isEmpty (getCellAt grid currentPos width height)) = explorePositions remainingToExplore currentVisited regionPositions
+            | otherwise = explorePositions newToExplore updatedVisited (currentPos : regionPositions)
           where
-            nbrs = filter (\n -> isEmpty (getCellAt grid n width height) && not (Set.member n vis')) (neighbors q)
-            newVisited = foldr Set.insert vis' nbrs
-            newQueue = qs Seq.>< Seq.fromList nbrs
+            validNeighbors = filter isValidEmptyPosition (getCardinalNeighbors currentPos)
+            newToExplore = validNeighbors ++ remainingToExplore
+            updatedVisited = Set.insert currentPos currentVisited
         
-        -- Neighborhood (without diagonals)
-        neighbors (x, y) =
-            filter (\(nx, ny) -> not (isOutOfBounds (nx, ny) width height))
-                [(x-1,y),(x+1,y),(x,y-1),(x,y+1)]
+        isValidEmptyPosition pos = not (Set.member pos initialVisited) && 
+                                  not (isOutOfBounds pos width height) &&
+                                  isEmpty (getCellAt grid pos width height)
+        
+        -- Get 4-directional neighbors (no diagonals)
+        getCardinalNeighbors (x, y) = [(x-1,y), (x+1,y), (x,y-1), (x,y+1)]
 
 -- Creates tunnels between disconnected areas to connect them.
 connectRegions :: Grid -> Int -> Int -> Grid
@@ -309,7 +314,7 @@ main = do
 
     putStrLn ("\nGrid size: " ++ show gridWidth ++ "x" ++ show gridHeight)
     putStrLn "\nFinal map with enemies (*) and loot ($):"
-    let finalGrid = generateGridWithEnemiesAndLoot 0.4 enemyProb lootProb seed gridWidth gridHeight
+    let finalGrid = generateGridWithEnemiesAndLoot 0.35 enemyProb lootProb seed gridWidth gridHeight
     putStrLn (showGrid finalGrid)
     putStrLn ("Total enemies placed: " ++ show (countEnemies finalGrid))
     putStrLn ("Total loot placed: " ++ show (countLoot finalGrid))
