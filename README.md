@@ -25,3 +25,9 @@ Generation method:
 * "Blurring" of the relief by a cellular automaton;
 * Ensuring connectivity;
 * Placing enemies and loot according to probability.
+
+# Installation
+1) create a folder for the project and execute the following program in terminal: "git clone https://github.com/TimurBikmetov/DnD-map-generator/tree/main"
+2) Write "cabal build" in terminal
+3) Write "cabal run" in terminal
+4) Follow the instructions to customize parameters of the map generation 
