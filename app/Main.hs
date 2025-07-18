@@ -238,7 +238,7 @@ identifyRegions grid width height = findAllRegions Set.empty (getAllPositions wi
         isValidEmptyPosition pos = not (Set.member pos initialVisited) && 
                                   not (isOutOfBounds pos width height) &&
                                   isEmpty (getCellAt grid pos width height)
-        
+            
         -- Get 4-directional neighbors (no diagonals)
         getCardinalNeighbors (x, y) = [(x-1,y), (x+1,y), (x,y-1), (x,y+1)]
 
@@ -250,7 +250,10 @@ connectRegions grid width height = connectAllRegions grid regions
     
     connectAllRegions g [] = g
     connectAllRegions g [r] = g
-    connectAllRegions g (r0:rs) = foldl (connectToFirstRegion r0) g rs
+    connectAllRegions g (r0:r1:rs) = connectAllRegions g' (r0:rs)
+        where
+            g' = connectToFirstRegion r0 g r1
+
     
     -- For each subsequent area, we look for the closest points to the connected area and build a passage.
     connectToFirstRegion firstRegion currentGrid region = digTunnel currentGrid startPoint endPoint
@@ -293,7 +296,7 @@ countLoot2 :: Grid -> Int
 countLoot2 grid = length (filter (== Loot2) (concat grid))
 
 readIntSafe :: String -> Maybe Int
-readIntSafe s = case reads s of
+readIntSafe s = case reads s of 
     [(n, "")] -> Just n
     _         -> Nothing
 
@@ -355,4 +358,4 @@ main = do
     putStrLn ("Total enemies placed: " ++ show (countEnemies finalGrid))
     putStrLn ("Total loot1 placed: " ++ show (countLoot1 finalGrid))
     putStrLn ("Total loot2 placed: " ++ show (countLoot2 finalGrid))
-    putStrLn ("\nSeed used: " ++ show seed ++ " (save this to reproduce the same cave!)")
+    putStrLn ("\nSeed used: " ++ show seed ++ " (save this to reproduce the same map!)")

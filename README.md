@@ -14,7 +14,7 @@ availability of useful loot.
 # The working version
 Here you can see the code of the last version of project: [Link](app\Main.hs)
 # Demo
-Here you can see demo video: [Video](https://drive.google.com/file/d/1Ao8013NjCw8gYMPixqgQZKUjtOQTH7aT/view?usp=drivesdk)
+Here you can see demo video: [Video](https://drive.google.com/file/d/1qWdtTaFRy4HB5j80txO_BoKX01Kj_uDt/view?usp=sharing)
 
 Bellow you can see examples of generated maps:
 | | | | 
@@ -24,7 +24,7 @@ Bellow you can see examples of generated maps:
 
 ## Annotation:
 * **Enemies** are marked as `*`;
-* **Loot** is marked as `$`;
+* **Loot** is marked as `$` and `@`;
 * **Walls** are marked as `#`.
 
 Generation method:
@@ -35,8 +35,8 @@ Generation method:
 
 ## Responsibilities distribution
 ### Stage 1:
-* Fyodor created object types, GridWithoutObject generation 
-* Timur created evolution rule, object adding to the map
+* Fyodor created object types, GridWithoutObject generation;
+* Timur created evolution rule, object adding to the map.
 ### Stage 2:
-* Timur improved connectivity (searching unconnected parts and connecting them artificially)
-* Fyodor improved probability rates, view of objects, added choice for probabilities, added additional loot type
+* Timur improved connectivity (searching unconnected parts and connecting them artificially), added documentation;
+* Fyodor improved probability rates, view of objects, added choice for probabilities, added additional loot type.
